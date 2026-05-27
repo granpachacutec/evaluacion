@@ -1,0 +1,1243 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>I.E. Gran Pachacútec — Dashboard I Bimestre 2026</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    /* === Variables institucionales: azul marino + dorado === */
+    :root {
+      --navy: #1a3a5c; --navy-d: #122840;
+      --gold: #c8a84b;
+      --bg: #f4f6f9;
+      --ad: #2e7d32; --a: #66bb6a; --b: #ffa726; --c: #ef5350;
+      --sw: 260px;
+      --card: 0 2px 8px rgba(0,0,0,0.08);
+      --rad: 10px;
+      --txt: #1e2d3d; --txt2: #546e7a; --bord: #e0e6ed;
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:'Inter',sans-serif; background:var(--bg); color:var(--txt); display:flex; min-height:100vh; overflow-x:hidden; }
+
+    /* === Spinner === */
+    #spinner { position:fixed; inset:0; background:rgba(26,58,92,0.97); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:9999; gap:16px; }
+    #spinner.hidden { display:none; }
+    .spin { width:56px; height:56px; border:5px solid rgba(255,255,255,0.2); border-top-color:var(--gold); border-radius:50%; animation:giro .8s linear infinite; }
+    @keyframes giro { to { transform:rotate(360deg); } }
+    .spin-t { color:#fff; font-size:15px; font-weight:600; }
+    .spin-s { color:rgba(255,255,255,0.5); font-size:12px; }
+
+    /* === Barra lateral === */
+    #sidebar { width:var(--sw); min-height:100vh; background:var(--navy); display:flex; flex-direction:column; position:fixed; top:0; left:0; z-index:200; transition:transform .3s; overflow:hidden; }
+    #sidebar.collapsed { transform:translateX(calc(-1 * var(--sw))); }
+    .sb-head { padding:18px 16px; border-bottom:1px solid rgba(255,255,255,0.1); display:flex; align-items:center; gap:12px; flex-shrink:0; }
+    .sb-logo { width:38px; height:38px; background:var(--gold); border-radius:8px; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:15px; color:var(--navy); flex-shrink:0; }
+    .sb-name { color:#fff; font-size:13px; font-weight:700; }
+    .sb-period { color:rgba(255,255,255,0.45); font-size:11px; margin-top:2px; }
+    .sb-nav { padding:12px 0; flex:1; overflow-y:auto; }
+    .sb-nav::-webkit-scrollbar { width:3px; }
+    .sb-nav::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.2); }
+    .nav-item { display:flex; align-items:center; gap:12px; padding:12px 20px; color:rgba(255,255,255,0.7); font-size:13.5px; font-weight:500; border-left:3px solid transparent; cursor:pointer; transition:all .2s; }
+    .nav-item:hover { background:rgba(255,255,255,0.06); color:#fff; }
+    .nav-item.active { background:rgba(200,168,75,0.15); color:var(--gold); border-left-color:var(--gold); }
+    .nav-ic { font-size:16px; flex-shrink:0; }
+    .sb-foot { padding:12px 20px; border-top:1px solid rgba(255,255,255,0.08); color:rgba(255,255,255,0.3); font-size:10px; flex-shrink:0; }
+
+    /* === Área principal === */
+    #main { margin-left:var(--sw); flex:1; display:flex; flex-direction:column; transition:margin-left .3s; min-width:0; }
+    #main.expanded { margin-left:0; }
+    .topbar { background:#fff; padding:14px 24px; display:flex; align-items:center; gap:14px; box-shadow:0 1px 4px rgba(0,0,0,0.07); position:sticky; top:0; z-index:100; }
+    #ham { background:none; border:none; font-size:22px; cursor:pointer; color:var(--navy); padding:4px 6px; line-height:1; }
+    .tb-title { font-size:16px; font-weight:700; color:var(--navy); }
+    .tb-right { margin-left:auto; font-size:12px; color:var(--txt2); }
+
+    /* === Secciones === */
+    .sec { display:none; padding:28px 24px; }
+    .sec.active { display:block; }
+    .sec-h { font-size:22px; font-weight:800; color:var(--navy); }
+    .sec-sub { font-size:13px; color:var(--txt2); margin:4px 0 24px; }
+
+    /* === Barra de filtros === */
+    .fbar { background:#fff; border-radius:var(--rad); padding:16px 20px; margin-bottom:24px; display:flex; flex-wrap:wrap; gap:14px; align-items:flex-end; box-shadow:var(--card); }
+    .fbar label { font-size:11px; font-weight:700; color:var(--txt2); text-transform:uppercase; letter-spacing:.4px; display:flex; flex-direction:column; gap:5px; }
+    .fbar select { padding:8px 10px; border:1.5px solid var(--bord); border-radius:6px; font-family:'Inter',sans-serif; font-size:13px; color:var(--txt); background:#fff; cursor:pointer; min-width:120px; }
+    .fbar select:focus { outline:none; border-color:var(--navy); }
+    .btn-r { padding:9px 16px; background:var(--navy); color:#fff; border:none; border-radius:6px; font-size:13px; cursor:pointer; font-family:'Inter',sans-serif; font-weight:600; }
+    .btn-r:hover { background:var(--navy-d); }
+
+    /* === Tarjetas KPI === */
+    .kpi-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(155px,1fr)); gap:16px; margin-bottom:20px; }
+    .kpi { background:#fff; border-radius:var(--rad); padding:18px; box-shadow:var(--card); border-top:4px solid var(--navy); }
+    .kpi.kad { border-top-color:var(--ad); } .kpi.ka { border-top-color:var(--a); }
+    .kpi.kb  { border-top-color:var(--b);  } .kpi.kc { border-top-color:var(--c);  }
+    /* MOD 1: nuevas variantes de color para KPIs de asistencia */
+    .kpi.kdb { border-top-color:#b71c1c; }
+    .kpi.kbl { border-top-color:#1565c0; }
+    .kpi-lbl { font-size:10px; font-weight:700; color:var(--txt2); text-transform:uppercase; letter-spacing:.5px; }
+    .kpi-val { font-size:30px; font-weight:800; margin:6px 0 2px; }
+    .kpi-det { font-size:11px; color:var(--txt2); }
+
+    /* === Barra de progreso proporcional (MOD 1) === */
+    .bprog { display:flex; background:#eee; border-radius:8px; height:36px; overflow:hidden; margin:6px 0 12px; }
+    .bpseg { display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:#fff; min-width:0; overflow:hidden; transition:width .4s; }
+    .bpleg { display:flex; flex-wrap:wrap; gap:14px; }
+    .bpl { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--txt); }
+    .bpdot { width:10px; height:10px; border-radius:3px; flex-shrink:0; }
+
+    /* === Tarjetas de gráfico === */
+    .card { background:#fff; border-radius:var(--rad); padding:20px; box-shadow:var(--card); margin-bottom:24px; }
+    .card-t { font-size:14px; font-weight:700; color:var(--navy); padding-bottom:10px; margin-bottom:16px; border-bottom:2px solid var(--gold); display:inline-block; }
+
+    /* === Resumen (sección 2) === */
+    .s-strip { display:flex; flex-wrap:wrap; gap:14px; margin-bottom:20px; }
+    .s-box { background:#fff; border-radius:8px; padding:14px 20px; box-shadow:var(--card); border-left:4px solid var(--c); }
+    .s-box.ora { border-left-color:var(--b); } .s-box.blu { border-left-color:var(--navy); }
+    .s-val { font-size:24px; font-weight:800; }
+    .s-lbl { font-size:11px; color:var(--txt2); font-weight:600; margin-top:2px; }
+
+    /* === Tablas === */
+    .tcard { background:#fff; border-radius:var(--rad); padding:20px; box-shadow:var(--card); margin-bottom:24px; }
+    .thead-w { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:14px; }
+    .srch { padding:9px 12px; border:1.5px solid var(--bord); border-radius:6px; font-family:'Inter',sans-serif; font-size:13px; width:230px; }
+    .srch:focus { outline:none; border-color:var(--navy); }
+    .tscroll { max-height:500px; overflow-y:auto; }
+    .tscroll::-webkit-scrollbar { width:5px; }
+    .tscroll::-webkit-scrollbar-thumb { background:#ccd; border-radius:3px; }
+    table.dt { width:100%; border-collapse:collapse; font-size:13px; }
+    table.dt th { background:var(--navy); color:#fff; padding:10px 12px; text-align:left; font-size:11px; font-weight:700; white-space:nowrap; }
+    table.dt td { padding:9px 12px; border-bottom:1px solid #f0f2f5; vertical-align:middle; }
+    table.dt tr:hover td { background:#f8f9ff; }
+    .rw { background:#fff3e0 !important; }
+    .rc { background:#ffebee !important; }
+    .pag { display:flex; justify-content:center; align-items:center; gap:6px; margin-top:14px; flex-wrap:wrap; }
+    .pb { padding:5px 11px; border:1.5px solid var(--bord); border-radius:5px; cursor:pointer; font-size:12px; font-family:'Inter',sans-serif; background:#fff; }
+    .pb:hover { border-color:var(--navy); } .pb.act { background:var(--navy); color:#fff; border-color:var(--navy); }
+
+    /* === Heatmap === */
+    .hm-wrap { overflow-x:auto; }
+    .hm { border-collapse:collapse; font-size:11px; min-width:700px; width:100%; }
+    .hm th { background:var(--navy); color:#fff; padding:8px 10px; text-align:center; font-size:10px; white-space:nowrap; }
+    .hm th.hml { text-align:left; min-width:210px; }
+    .hm th.srt { cursor:pointer; background:#b71c1c; }
+    .hm th.srt:hover { background:#c62828; }
+    .hm td { padding:6px 10px; text-align:center; border:1px solid rgba(0,0,0,0.05); font-weight:600; }
+    .hm td.hml { text-align:left; background:#f7f8fc !important; font-weight:500; color:var(--txt); }
+
+    /* === Top 5 competencias === */
+    .t5 { display:grid; grid-template-columns:repeat(auto-fit,minmax(270px,1fr)); gap:16px; }
+    .c5 { background:#fff; border-radius:var(--rad); padding:16px; box-shadow:var(--card); border-left:5px solid var(--c); }
+    .c5-rk { font-size:10px; font-weight:800; color:var(--c); text-transform:uppercase; letter-spacing:.5px; }
+    .c5-ar { font-size:11px; color:var(--txt2); margin:4px 0; }
+    .c5-nm { font-size:13px; font-weight:600; margin-bottom:12px; line-height:1.4; }
+    .pbars { display:flex; flex-direction:column; gap:7px; }
+    .pbr { display:flex; align-items:center; gap:8px; }
+    .pbl { font-size:11px; font-weight:700; width:22px; text-align:center; }
+    .pbtr { flex:1; height:7px; background:#eee; border-radius:4px; overflow:hidden; }
+    .pbfi { height:100%; border-radius:4px; }
+    .pbp { font-size:11px; font-weight:700; width:34px; text-align:right; }
+
+    /* === Sección 5: Donuts por área === */
+    .donuts-g { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+    @media(max-width:900px){ .donuts-g{ grid-template-columns:repeat(2,1fr); } }
+    .donut-c { background:#f8f9ff; border-radius:8px; padding:14px; text-align:center; border:1px solid var(--bord); }
+    .donut-c h4 { font-size:11px; font-weight:700; color:var(--navy); margin-bottom:8px; line-height:1.3; }
+    /* Cabecera de tabla sortable (sección 5) */
+    table.dt th.sortTh { cursor:pointer; user-select:none; }
+    table.dt th.sortTh:hover { background:#0d2d4a; }
+
+    /* === Sección 6: Área checkboxes y proyección === */
+    .area-cbs { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px; }
+    .area-cb-item { display:flex; align-items:center; gap:6px; padding:6px 12px; border:1.5px solid var(--bord); border-radius:20px; cursor:pointer; font-size:12px; font-weight:500; background:#fff; transition:all .2s; }
+    .area-cb-item:hover { border-color:var(--navy); color:var(--navy); }
+    .area-cb-item.checked { background:var(--navy); color:#fff; border-color:var(--navy); }
+    /* Filas proyectadas en tabla 6D */
+    .proj-cell { background:#f5f5f5 !important; font-style:italic; color:#888; }
+    .proj-row td:first-child { color:#888; }
+
+    /* === Sección 7: Ficha de estudiante === */
+    .stu-wrap { position:relative; margin-bottom:16px; }
+    .stu-inp { width:100%; padding:12px 16px; border:1.5px solid var(--bord); border-radius:8px; font-size:14px; font-family:'Inter',sans-serif; color:var(--txt); }
+    .stu-inp:focus { outline:none; border-color:var(--navy); }
+    .stu-dd { position:absolute; top:100%; left:0; right:0; background:#fff; border:1.5px solid var(--bord); border-top:none; border-radius:0 0 8px 8px; z-index:50; max-height:240px; overflow-y:auto; box-shadow:0 4px 12px rgba(0,0,0,0.1); display:none; }
+    .stu-dd.open { display:block; }
+    .stu-di { padding:10px 14px; cursor:pointer; font-size:13px; border-bottom:1px solid #f0f2f5; display:flex; justify-content:space-between; align-items:center; gap:8px; }
+    .stu-di:hover { background:#f0f4ff; }
+    .stu-sec { font-size:11px; color:var(--txt2); background:#f0f2f5; padding:2px 8px; border-radius:10px; white-space:nowrap; flex-shrink:0; }
+    .ficha-h { background:linear-gradient(135deg,var(--navy) 0%,#2a5c8e 100%); color:#fff; border-radius:var(--rad); padding:22px 26px; margin-bottom:24px; }
+    .ficha-name { font-size:18px; font-weight:800; margin-bottom:4px; }
+    .ficha-meta { font-size:13px; opacity:.8; }
+    .ficha-kpis { display:flex; flex-wrap:wrap; gap:12px; margin-top:16px; }
+    .fkpi { background:rgba(255,255,255,0.15); border-radius:8px; padding:10px 18px; text-align:center; }
+    .fkpi-val { font-size:22px; font-weight:800; }
+    .fkpi-lbl { font-size:10px; opacity:.8; text-transform:uppercase; letter-spacing:.5px; margin-top:2px; }
+    /* Badges de nivel */
+    .nbad { display:inline-block; padding:3px 11px; border-radius:12px; font-size:11px; font-weight:800; color:#fff; }
+    .nbad-AD { background:#2e7d32; } .nbad-A { background:#66bb6a; }
+    .nbad-B  { background:#ffa726; } .nbad-C { background:#ef5350; }
+    /* Separador de área en tabla 7D */
+    .area-sep { background:#e8edf5 !important; }
+    .area-sep td { font-weight:800; color:var(--navy) !important; padding:8px 12px; }
+
+    /* === Pie de página === */
+    footer { background:var(--navy); color:rgba(255,255,255,0.7); text-align:center; padding:14px 20px; font-size:11px; margin-top:auto; line-height:1.6; }
+    footer b { color:var(--gold); }
+
+    /* === Responsivo === */
+    @media (max-width:768px) {
+      #sidebar { transform:translateX(calc(-1 * var(--sw))); }
+      #sidebar.open { transform:translateX(0); }
+      #main { margin-left:0; }
+      .sec { padding:16px; }
+      .kpi-row { grid-template-columns:repeat(2,1fr); }
+      .srch { width:100%; }
+      .donuts-g { grid-template-columns:1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══════════ SPINNER ══════════ -->
+<div id="spinner">
+  <div class="spin"></div>
+  <p class="spin-t">Cargando datos institucionales…</p>
+  <p class="spin-s">I.E. Gran Pachacútec — I Bimestre 2026</p>
+</div>
+
+<!-- ══════════ BARRA LATERAL (7 ítems) ══════════ -->
+<aside id="sidebar">
+  <div class="sb-head">
+    <div class="sb-logo">GP</div>
+    <div>
+      <div class="sb-name">Gran Pachacútec</div>
+      <div class="sb-period">I Bimestre 2026</div>
+    </div>
+  </div>
+  <nav class="sb-nav">
+    <div class="nav-item active" onclick="navTo('s1',this)">
+      <span class="nav-ic">📊</span>1. Niveles de Logro
+    </div>
+    <div class="nav-item" onclick="navTo('s2',this)">
+      <span class="nav-ic">⚠️</span>2. Casos Críticos
+    </div>
+    <div class="nav-item" onclick="navTo('s3',this)">
+      <span class="nav-ic">📚</span>3. Áreas — Vista General
+    </div>
+    <div class="nav-item" onclick="navTo('s4',this)">
+      <span class="nav-ic">📅</span>4. Asistencia y Puntualidad
+    </div>
+    <div class="nav-item" onclick="navTo('s5',this)">
+      <span class="nav-ic">🔍</span>5. Análisis por Área
+    </div>
+    <div class="nav-item" onclick="navTo('s6',this)">
+      <span class="nav-ic">📈</span>6. Proyección Bimestral
+    </div>
+    <div class="nav-item" onclick="navTo('s7',this)">
+      <span class="nav-ic">👤</span>7. Ficha de Estudiante
+    </div>
+  </nav>
+  <div class="sb-foot">Sistema de Análisis Bimestral 2026</div>
+</aside>
+
+<!-- ══════════ CONTENIDO PRINCIPAL ══════════ -->
+<div id="main">
+  <div class="topbar">
+    <button id="ham" onclick="togSb()">☰</button>
+    <span class="tb-title" id="tbt">Niveles de Logro</span>
+    <span class="tb-right">I.E. Gran Pachacútec &nbsp;•&nbsp; I Bimestre 2026</span>
+  </div>
+
+  <!-- ════ SECCIÓN 1: NIVELES DE LOGRO (sin cambios) ════ -->
+  <div id="s1" class="sec active">
+    <h2 class="sec-h">Niveles de Logro</h2>
+    <p class="sec-sub">Distribución de logros AD · A · B · C filtrable por ciclo, grado y sección</p>
+    <div class="fbar">
+      <label>Bimestre<select id="f1b" onchange="r1()"><option value="">Todos</option><option value="1">I Bimestre</option></select></label>
+      <label>Ciclo<select id="f1c" onchange="f1cc()"><option value="">Todos</option><option value="VI">Ciclo VI</option><option value="VII">Ciclo VII</option></select></label>
+      <label>Grado<select id="f1g" onchange="f1gc()"><option value="">Todos</option></select></label>
+      <label>Sección<select id="f1s" onchange="r1()"><option value="">Todas</option></select></label>
+      <button class="btn-r" onclick="rst('f1b','f1c','f1g','f1s');pobGrd('f1',true);r1()">Limpiar</button>
+    </div>
+    <div id="kpi1" class="kpi-row"></div>
+    <div class="card"><span class="card-t">Distribución por Ciclo — barras agrupadas %</span><div style="position:relative;height:185px"><canvas id="ch-cic"></canvas></div></div>
+    <div class="card"><span class="card-t">Distribución por Grado — apilado 100%</span><div style="position:relative;height:275px"><canvas id="ch-grd"></canvas></div></div>
+    <div class="card"><span class="card-t">Distribución por Sección — ordenado por % En Inicio (C) ↓</span><div style="position:relative;height:430px"><canvas id="ch-sec"></canvas></div></div>
+  </div>
+
+  <!-- ════ SECCIÓN 2: CASOS CRÍTICOS (sin cambios) ════ -->
+  <div id="s2" class="sec">
+    <h2 class="sec-h">Casos Críticos</h2>
+    <p class="sec-sub">Estudiantes con 10 o más competencias en nivel C (En Inicio)</p>
+    <div id="strip2" class="s-strip"></div>
+    <div class="tcard">
+      <div class="thead-w">
+        <span style="font-size:14px;font-weight:700;color:var(--navy)">Estudiantes en Riesgo</span>
+        <input class="srch" id="q2" placeholder="Buscar por nombre…" oninput="flt2()">
+      </div>
+      <div class="tscroll">
+        <table class="dt"><thead><tr><th>N°</th><th>Apellidos y Nombres</th><th>Sección</th><th>Grado</th><th>Ciclo</th><th>N° C</th><th>Áreas críticas</th><th>Faltas</th><th>Tardanzas</th></tr></thead><tbody id="tb2"></tbody></table>
+      </div>
+      <div id="pag2" class="pag"></div>
+    </div>
+  </div>
+
+  <!-- ════ SECCIÓN 3: ÁREAS — VISTA GENERAL (sin cambios en contenido) ════ -->
+  <div id="s3" class="sec">
+    <h2 class="sec-h">Áreas y Competencias — Vista General</h2>
+    <p class="sec-sub">Rendimiento por área curricular y mapa de calor de competencias</p>
+    <div class="fbar">
+      <label>Bimestre<select id="f3b" onchange="r3()"><option value="">Todos</option><option value="1">I Bimestre</option></select></label>
+      <label>Ciclo<select id="f3c" onchange="f3cc()"><option value="">Todos</option><option value="VI">Ciclo VI</option><option value="VII">Ciclo VII</option></select></label>
+      <label>Grado<select id="f3g" onchange="f3gc()"><option value="">Todos</option></select></label>
+      <label>Sección<select id="f3s" onchange="r3()"><option value="">Todas</option></select></label>
+      <button class="btn-r" onclick="rst('f3b','f3c','f3g','f3s');pobGrd('f3',true);r3()">Limpiar</button>
+    </div>
+    <div class="card"><span class="card-t">Ranking de Áreas por % En Inicio (C)</span><div style="position:relative;height:395px"><canvas id="ch-areas"></canvas></div></div>
+    <div class="card"><span class="card-t">Top 5 Competencias más Críticas</span><div id="top5" class="t5"></div></div>
+    <div class="card"><span class="card-t">Mapa de Calor — % En Inicio (C) por Competencia × Sección</span><div class="hm-wrap"><table class="hm"><thead id="hm-h"></thead><tbody id="hm-b"></tbody></table></div></div>
+  </div>
+
+  <!-- ════ SECCIÓN 4: ASISTENCIA Y PUNTUALIDAD (MOD 1 + MOD 2) ════ -->
+  <div id="s4" class="sec">
+    <h2 class="sec-h">Asistencia y Puntualidad</h2>
+    <p class="sec-sub">Seguimiento de faltas, tardanzas y tasa de asistencia por sección</p>
+
+    <!-- MOD 2: Añadido selector de Sección -->
+    <div class="fbar">
+      <label>Bimestre<select id="f4b" onchange="r4()"><option value="">Todos</option><option value="1">I Bimestre</option></select></label>
+      <label>Ciclo<select id="f4c" onchange="f4cc()"><option value="">Todos</option><option value="VI">Ciclo VI</option><option value="VII">Ciclo VII</option></select></label>
+      <label>Grado<select id="f4g" onchange="f4gc()"><option value="">Todos</option></select></label>
+      <label>Sección<select id="f4s" onchange="r4()"><option value="">Todas</option></select></label>
+      <button class="btn-r" onclick="rst('f4b','f4c','f4g','f4s');pobGrd('f4',true);r4()">Limpiar</button>
+    </div>
+
+    <!-- 4A: KPIs (MOD 1: 6 tarjetas con nueva fórmula) -->
+    <div id="kpi4" class="kpi-row"></div>
+    <!-- MOD 1: Barra de progreso proporcional debajo de los KPIs -->
+    <div id="barra4" class="card"></div>
+
+    <div class="card"><span class="card-t">Faltas e Inasistencias Justificadas por Sección</span><div style="position:relative;height:300px"><canvas id="ch-falt"></canvas></div></div>
+    <div class="card"><span class="card-t">Tardanzas por Sección — rojo indica más del doble del promedio</span><div style="position:relative;height:320px"><canvas id="ch-tar"></canvas></div></div>
+    <div class="card"><span class="card-t">Tasa de Asistencia (línea) vs Tardanzas Promedio por Estudiante (barras)</span><div style="position:relative;height:300px"><canvas id="ch-dual"></canvas></div></div>
+    <div class="tcard">
+      <div class="thead-w">
+        <span style="font-size:14px;font-weight:700;color:var(--navy)">Puntualidad Crítica</span>
+        <input class="srch" id="q4" placeholder="Buscar por nombre…" oninput="flt4()">
+      </div>
+      <div class="tscroll">
+        <table class="dt"><thead><tr><th>Apellidos y Nombres</th><th>Sección</th><th>Grado</th><th>Faltas</th><th>Tardanzas</th><th>Justificadas</th></tr></thead><tbody id="tb4"></tbody></table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ SECCIÓN 5: ANÁLISIS DETALLADO POR ÁREA (NUEVA) ════ -->
+  <div id="s5" class="sec">
+    <h2 class="sec-h">Análisis Detallado por Área</h2>
+    <p class="sec-sub">Selecciona un área para ver el detalle de competencias, o visualiza todas con gráficos de dona</p>
+    <div class="fbar">
+      <label>Bimestre<select id="f5b" onchange="r5()"><option value="">Todos</option><option value="1">I Bimestre</option></select></label>
+      <label>Ciclo<select id="f5c" onchange="f5cc()"><option value="">Todos</option><option value="VI">Ciclo VI</option><option value="VII">Ciclo VII</option></select></label>
+      <label>Grado<select id="f5g" onchange="f5gc()"><option value="">Todos</option></select></label>
+      <label>Sección<select id="f5s" onchange="r5()"><option value="">Todas</option></select></label>
+      <label>Área<select id="f5a" onchange="r5()"><option value="">Todas las áreas</option></select></label>
+      <button class="btn-r" onclick="rst('f5b','f5c','f5g','f5s','f5a');pobGrd('f5',true);r5()">Limpiar</button>
+    </div>
+
+    <!-- 5A + 5B: Vista de área individual -->
+    <div id="s5-single" style="display:none">
+      <div class="card">
+        <span class="card-t" id="s5-title">Resultados del Área</span>
+        <div style="position:relative;height:320px"><canvas id="ch-area5"></canvas></div>
+      </div>
+      <div class="tcard">
+        <div class="thead-w"><span style="font-size:14px;font-weight:700;color:var(--navy)">Resultados por Competencia</span></div>
+        <table class="dt">
+          <thead>
+            <tr>
+              <th>Competencia</th>
+              <th class="sortTh" data-col="pAD" data-lbl="AD%" onclick="sort5Tab('pAD')">AD%</th>
+              <th class="sortTh" data-col="pA"  data-lbl="A%"  onclick="sort5Tab('pA')">A%</th>
+              <th class="sortTh" data-col="pB"  data-lbl="B%"  onclick="sort5Tab('pB')">B%</th>
+              <th class="sortTh" data-col="pC"  data-lbl="C%"  onclick="sort5Tab('pC')">C% ↓</th>
+              <th>Total eval.</th>
+            </tr>
+          </thead>
+          <tbody id="tb5b"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 5C: Vista todas las áreas (donuts) -->
+    <div id="s5-all">
+      <div class="card">
+        <span class="card-t">Vista General por Área — ordenado por % En Inicio (C) ↓</span>
+        <div id="donuts-g" class="donuts-g"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ SECCIÓN 6: PROYECCIÓN BIMESTRAL (NUEVA) ════ -->
+  <div id="s6" class="sec">
+    <h2 class="sec-h">Proyección Bimestral</h2>
+    <p class="sec-sub">Tendencias y proyecciones hasta el IV Bimestre — línea sólida: real · punteada: proyectado</p>
+    <div class="fbar">
+      <label>Ciclo<select id="f6c" onchange="f6cc()"><option value="">Todos</option><option value="VI">Ciclo VI</option><option value="VII">Ciclo VII</option></select></label>
+      <label>Grado<select id="f6g" onchange="f6gc()"><option value="">Todos</option></select></label>
+      <label>Sección<select id="f6s" onchange="r6()"><option value="">Todas</option></select></label>
+      <button class="btn-r" onclick="rst('f6c','f6g','f6s');pobGrd('f6',true);r6()">Limpiar</button>
+    </div>
+
+    <!-- 6A: Proyección de niveles -->
+    <div class="card">
+      <span class="card-t">6A — Proyección de Niveles de Logro Institucional</span>
+      <p style="font-size:12px;color:var(--txt2);margin-bottom:14px">Con solo un bimestre real los bimestres 2–4 se proyectan con valor constante. Se actualizará automáticamente al cargar B2, B3, B4.</p>
+      <div style="position:relative;height:320px"><canvas id="ch-p6a"></canvas></div>
+    </div>
+
+    <!-- 6B: Comparación por áreas -->
+    <div class="card">
+      <span class="card-t">6B — Proyección Comparativa por Área (% En Inicio)</span>
+      <p style="font-size:12px;color:var(--txt2);margin-bottom:10px">Selecciona hasta 4 áreas para comparar su evolución bimestral</p>
+      <div id="s6-cbs" class="area-cbs"></div>
+      <p id="p6b-msg" style="color:var(--txt2);font-size:13px;text-align:center;padding:24px 0">Selecciona al menos un área para ver la comparación</p>
+      <div style="position:relative;height:280px"><canvas id="ch-p6b" style="display:none"></canvas></div>
+    </div>
+
+    <!-- 6C: Proyección asistencia -->
+    <div class="card">
+      <span class="card-t">6C — Proyección de Asistencia y Puntualidad</span>
+      <div style="position:relative;height:280px"><canvas id="ch-p6c"></canvas></div>
+    </div>
+
+    <!-- 6D: Tabla resumen -->
+    <div class="tcard">
+      <div class="thead-w"><span style="font-size:14px;font-weight:700;color:var(--navy)">6D — Tabla Resumen de Proyecciones (Bimestres 1–4)</span></div>
+      <table class="dt">
+        <thead><tr><th>Bimestre</th><th style="text-align:center">% AD</th><th style="text-align:center">% A</th><th style="text-align:center">% B</th><th style="text-align:center">% C</th><th style="text-align:center">Tasa Asist.</th><th style="text-align:center">% Tardanzas</th></tr></thead>
+        <tbody id="t6d"></tbody>
+      </table>
+      <p style="font-size:11px;color:var(--txt2);margin-top:12px;font-style:italic">* Los valores proyectados (en cursiva y fondo gris) se calculan mediante regresión lineal y se actualizarán automáticamente al ingresar nuevos bimestres.</p>
+    </div>
+  </div>
+
+  <!-- ════ SECCIÓN 7: FICHA DE ESTUDIANTE (NUEVA) ════ -->
+  <div id="s7" class="sec">
+    <h2 class="sec-h">Ficha Individual de Estudiante</h2>
+    <p class="sec-sub">Perfil académico y de asistencia por estudiante</p>
+
+    <!-- 7A: Buscador -->
+    <div class="card">
+      <span class="card-t">Buscar Estudiante</span>
+      <div class="stu-wrap">
+        <input type="text" class="stu-inp" id="s7-inp" placeholder="Escribe apellido o nombre para buscar…" oninput="buscarEst7()" autocomplete="off">
+        <div class="stu-dd" id="s7-dd"></div>
+      </div>
+      <select id="s7-bim" onchange="loadFicha7()" style="display:none;padding:8px 12px;border:1.5px solid var(--bord);border-radius:6px;font-family:'Inter',sans-serif;font-size:13px;margin-top:8px"></select>
+    </div>
+
+    <!-- Ficha completa (oculta hasta seleccionar) -->
+    <div id="s7-ficha" style="display:none">
+      <!-- 7B: Encabezado -->
+      <div id="s7-header"></div>
+
+      <!-- 7C: Radar -->
+      <div class="card">
+        <span class="card-t">Perfil Académico por Áreas — Gráfico de Radar</span>
+        <p style="font-size:11px;color:var(--txt2);margin-bottom:12px">Escala: C=1, B=2, A=3, AD=4 — promedio por área</p>
+        <div style="position:relative;height:360px"><canvas id="ch-radar7"></canvas></div>
+      </div>
+
+      <!-- 7D: Tabla detallada -->
+      <div class="tcard">
+        <div class="thead-w"><span style="font-size:14px;font-weight:700;color:var(--navy)">Detalle de Competencias</span></div>
+        <div class="tscroll">
+          <table class="dt">
+            <thead><tr><th>Área</th><th>Competencia</th><th style="text-align:center;min-width:70px">Nivel</th></tr></thead>
+            <tbody id="tb7b"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 7E: Asistencia -->
+      <div class="card">
+        <span class="card-t">Ficha de Asistencia</span>
+        <div id="s7-asist"></div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <b>I.E. Gran Pachacútec</b> — Sistema de Análisis de Resultados Bimestrales 2026<br>
+    Secciones: Logros &nbsp;·&nbsp; Casos Críticos &nbsp;·&nbsp; Áreas General &nbsp;·&nbsp; Asistencia &nbsp;·&nbsp; Áreas Detalle &nbsp;·&nbsp; Proyección &nbsp;·&nbsp; Ficha Estudiantil
+  </footer>
+</div><!-- /#main -->
+
+<script>
+/* ============================================================
+   VARIABLES GLOBALES
+   ============================================================ */
+let CAT  = [];       // Catálogo de competencias
+let REGS = [];       // Registros de estudiantes
+let CH   = {};       // Instancias Chart.js activas
+let PG2  = 1;        // Página actual tabla críticos
+const PPG = 20;
+let DAT2 = [];       // Datos filtrados tabla críticos
+let DAT4 = [];       // Datos tabla puntualidad
+let HM_ASC = false;  // Orden heatmap
+
+/* Nuevas variables para secciones 5, 6, 7 */
+let S5_SORT = { col:'pC', asc:false };   // Orden tabla sección 5
+let ARB_SEL = new Set();                  // Áreas seleccionadas en 6B
+let S7_EST  = null;                       // Nombre del estudiante seleccionado en 7
+
+/* ============================================================
+   CARGA DE DATOS DESDE Base.json
+   ============================================================ */
+document.addEventListener('DOMContentLoaded', async () => {
+  try {
+    const resp = await fetch('./Base.json');
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    CAT  = data.catalogo;
+    REGS = data.registros;
+  } catch (e) {
+    document.getElementById('spinner').innerHTML =
+      `<div style="text-align:center;padding:24px">
+        <p style="color:#ff8a80;font-size:16px;font-weight:600">❌ No se pudo cargar Base.json</p>
+        <p style="color:rgba(255,255,255,.6);font-size:13px;margin-top:10px">
+          Ejecuta: <code style="background:rgba(255,255,255,.1);padding:2px 8px;border-radius:4px">npx serve .</code>
+          y abre <code style="background:rgba(255,255,255,.1);padding:2px 8px;border-radius:4px">http://localhost:3000</code>
+        </p></div>`;
+    return;
+  }
+
+  /* Inicializar filtros de cascada */
+  pobGrd('f1',true); pobGrd('f3',true);
+  pobGrd('f4',true); /* MOD 2: f4 ahora tiene sección */
+  pobGrd('f5',true); pobGrd('f6',true);
+  pobAreas(); /* Poblar selector de áreas en s5 */
+
+  /* Renderizar todas las secciones */
+  r1(); r2(); r3(); r4(); r5(); r6();
+
+  document.getElementById('spinner').classList.add('hidden');
+});
+
+/* ============================================================
+   NAVEGACIÓN
+   ============================================================ */
+const TITS = {
+  s1:'Niveles de Logro', s2:'Casos Críticos',
+  s3:'Áreas — Vista General', s4:'Asistencia y Puntualidad',
+  s5:'Análisis por Área', s6:'Proyección Bimestral',
+  s7:'Ficha de Estudiante'
+};
+
+function navTo(id, el) {
+  document.querySelectorAll('.sec').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  if (el) el.classList.add('active');
+  document.getElementById('tbt').textContent = TITS[id] || '';
+  if (window.innerWidth <= 768) document.getElementById('sidebar').classList.remove('open');
+}
+
+function togSb() {
+  const sb = document.getElementById('sidebar');
+  const mc = document.getElementById('main');
+  if (window.innerWidth <= 768) sb.classList.toggle('open');
+  else { sb.classList.toggle('collapsed'); mc.classList.toggle('expanded'); }
+}
+
+/* ============================================================
+   UTILIDADES GENERALES
+   ============================================================ */
+/* Filtrar registros por los selectores del prefijo dado */
+function fRegs(pre, hasSec) {
+  const bim=v(pre+'b'), cic=v(pre+'c'), grd=v(pre+'g');
+  const sec = hasSec ? v(pre+'s') : '';
+  return REGS.filter(r =>
+    (!bim || r.BIMESTRE===bim) && (!cic || r.CICLO===cic) &&
+    (!grd || r.GRADO===grd)   && (!sec || r.SECCION===sec)
+  );
+}
+function v(id) { const el=document.getElementById(id); return el?el.value:''; }
+
+/* Poblar selector de grados (y secciones si aplica) */
+function pobGrd(pre, hasSec) {
+  const cic=v(pre+'c');
+  const sel=document.getElementById(pre+'g');
+  if(!sel) return;
+  const grados=[...new Set(REGS.filter(r=>!cic||r.CICLO===cic).map(r=>r.GRADO))].sort();
+  sel.innerHTML='<option value="">Todos</option>';
+  grados.forEach(g=>sel.innerHTML+=`<option value="${g}">${g}°</option>`);
+  if(hasSec) pobSec(pre);
+}
+
+/* Poblar selector de secciones según ciclo + grado */
+function pobSec(pre) {
+  const sel=document.getElementById(pre+'s');
+  if(!sel) return;
+  const cic=v(pre+'c'), grd=v(pre+'g');
+  const secs=[...new Set(REGS.filter(r=>(!cic||r.CICLO===cic)&&(!grd||r.GRADO===grd)).map(r=>r.SECCION))].sort();
+  sel.innerHTML='<option value="">Todas</option>';
+  secs.forEach(s=>sel.innerHTML+=`<option value="${s}">${s}</option>`);
+}
+
+/* Poblar selector de áreas en sección 5 (llamado una vez al init) */
+function pobAreas() {
+  const sel=document.getElementById('f5a');
+  [...new Set(CAT.map(c=>c.AREA))].forEach(a=>sel.innerHTML+=`<option value="${a}">${a}</option>`);
+}
+
+/* Contar niveles AD/A/B/C en un conjunto de registros */
+function cNiv(regs) {
+  let ad=0,a=0,b=0,c=0;
+  regs.forEach(r=>Object.values(r.competencias).forEach(val=>{
+    if(val==='AD')ad++; else if(val==='A')a++; else if(val==='B')b++; else if(val==='C')c++;
+  }));
+  return {ad,a,b,c,t:ad+a+b+c};
+}
+function pct(n,t){ return t?Math.round(n/t*100):0; }
+function dCh(id){ if(CH[id]){CH[id].destroy();delete CH[id];} }
+function rst(...ids){ ids.forEach(id=>{const el=document.getElementById(id);if(el)el.value='';}); }
+
+/* Color de celda heatmap: blanco → rojo oscuro */
+function hmCol(val){
+  if(!val) return 'background:#f4f6f9;color:#bbb';
+  const r2=val/100;
+  return `background:rgb(${Math.round(248-65*r2)},${Math.round(248-220*r2)},${Math.round(248-220*r2)});color:${r2>0.45?'#fff':'#333'}`;
+}
+
+/* ============================================================
+   HANDLERS DE FILTROS EN CASCADA
+   ============================================================ */
+function f1cc(){ pobGrd('f1',true);  r1(); }
+function f1gc(){ pobSec('f1');       r1(); }
+function f3cc(){ pobGrd('f3',true);  r3(); }
+function f3gc(){ pobSec('f3');       r3(); }
+/* MOD 2: f4 ahora tiene sección → pobGrd con true */
+function f4cc(){ pobGrd('f4',true);  r4(); }
+function f4gc(){ pobSec('f4');       r4(); }
+/* Sección 5 */
+function f5cc(){ pobGrd('f5',true);  r5(); }
+function f5gc(){ pobSec('f5');       r5(); }
+/* Sección 6 */
+function f6cc(){ pobGrd('f6',true);  r6(); }
+function f6gc(){ pobSec('f6');       r6(); }
+
+/* ============================================================
+   SECCIÓN 1 — NIVELES DE LOGRO  (sin cambios)
+   ============================================================ */
+function r1(){
+  const regs=fRegs('f1',true);
+  const {ad,a,b,c,t}=cNiv(regs);
+  document.getElementById('kpi1').innerHTML=`
+    <div class="kpi"><div class="kpi-lbl">Estudiantes evaluados</div><div class="kpi-val" style="color:var(--navy)">${regs.length}</div><div class="kpi-det">${t.toLocaleString()} evaluaciones totales</div></div>
+    <div class="kpi kad"><div class="kpi-lbl">Logro Destacado (AD)</div><div class="kpi-val" style="color:var(--ad)">${pct(ad,t)}%</div><div class="kpi-det">${ad.toLocaleString()} competencias</div></div>
+    <div class="kpi ka"><div class="kpi-lbl">Logro Esperado (A)</div><div class="kpi-val" style="color:var(--a)">${pct(a,t)}%</div><div class="kpi-det">${a.toLocaleString()} competencias</div></div>
+    <div class="kpi kb"><div class="kpi-lbl">En Proceso (B)</div><div class="kpi-val" style="color:var(--b)">${pct(b,t)}%</div><div class="kpi-det">${b.toLocaleString()} competencias</div></div>
+    <div class="kpi kc"><div class="kpi-lbl">En Inicio (C)</div><div class="kpi-val" style="color:var(--c)">${pct(c,t)}%</div><div class="kpi-det">${c.toLocaleString()} competencias</div></div>`;
+
+  dCh('cic');
+  const cLabs=['Ciclo VI (1° y 2°)','Ciclo VII (3°, 4° y 5°)'];
+  const dAD=[],dA=[],dB=[],dC=[];
+  ['VI','VII'].forEach(ci=>{const s=regs.filter(r=>r.CICLO===ci),n=cNiv(s);dAD.push(pct(n.ad,n.t));dA.push(pct(n.a,n.t));dB.push(pct(n.b,n.t));dC.push(pct(n.c,n.t));});
+  CH['cic']=new Chart(document.getElementById('ch-cic'),{type:'bar',data:{labels:cLabs,datasets:[{label:'AD — Logro Destacado',data:dAD,backgroundColor:'#2e7d32'},{label:'A  — Logro Esperado',data:dA,backgroundColor:'#66bb6a'},{label:'B  — En Proceso',data:dB,backgroundColor:'#ffa726'},{label:'C  — En Inicio',data:dC,backgroundColor:'#ef5350'}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:11}}}},scales:{x:{max:100,ticks:{callback:v=>v+'%'}},y:{grid:{display:false}}}}});
+
+  dCh('grd');
+  const grados=[...new Set(regs.map(r=>r.GRADO))].sort();
+  const gAD=[],gA=[],gB=[],gC=[];
+  grados.forEach(g=>{const s=regs.filter(r=>r.GRADO===g),n=cNiv(s);gAD.push(pct(n.ad,n.t));gA.push(pct(n.a,n.t));gB.push(pct(n.b,n.t));gC.push(pct(n.c,n.t));});
+  CH['grd']=new Chart(document.getElementById('ch-grd'),{type:'bar',data:{labels:grados.map(g=>g+'° Grado'),datasets:[{label:'AD',data:gAD,backgroundColor:'#2e7d32',stack:'s'},{label:'A',data:gA,backgroundColor:'#66bb6a',stack:'s'},{label:'B',data:gB,backgroundColor:'#ffa726',stack:'s'},{label:'C',data:gC,backgroundColor:'#ef5350',stack:'s'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:11}}},tooltip:{callbacks:{label:cx=>` ${cx.dataset.label}: ${cx.raw}%`}}},scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,max:100,ticks:{callback:v=>v+'%'}}}}});
+
+  dCh('sec');
+  const secs=[...new Set(regs.map(r=>r.SECCION))];
+  let sd=secs.map(s=>{const sub=regs.filter(r=>r.SECCION===s),n=cNiv(sub);return{s,pC:pct(n.c,n.t),pB:pct(n.b,n.t),pA:pct(n.a,n.t),pAD:pct(n.ad,n.t)};});
+  sd.sort((x,y)=>y.pC-x.pC);
+  const pluginInline={id:'inline',afterDatasetsDraw(ch){const ctx2=ch.ctx;ch.data.datasets.forEach((ds,di)=>{const meta=ch.getDatasetMeta(di);if(meta.hidden)return;meta.data.forEach((el,i)=>{const val=ds.data[i];if(val<8)return;const{x,y,base}=el.getProps(['x','y','base'],true);ctx2.save();ctx2.fillStyle='rgba(255,255,255,0.93)';ctx2.font='bold 10px Inter,sans-serif';ctx2.textAlign='center';ctx2.textBaseline='middle';ctx2.fillText(val+'%',(x+base)/2,y);ctx2.restore();});});}};
+  CH['sec']=new Chart(document.getElementById('ch-sec'),{type:'bar',data:{labels:sd.map(d=>d.s),datasets:[{label:'C — En Inicio',data:sd.map(d=>d.pC),backgroundColor:'#ef5350',stack:'k'},{label:'B — En Proceso',data:sd.map(d=>d.pB),backgroundColor:'#ffa726',stack:'k'},{label:'A — Logro Esperado',data:sd.map(d=>d.pA),backgroundColor:'#66bb6a',stack:'k'},{label:'AD — Logro Dest.',data:sd.map(d=>d.pAD),backgroundColor:'#2e7d32',stack:'k'}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:11}}},tooltip:{callbacks:{label:cx=>` ${cx.dataset.label}: ${cx.raw}%`}}},scales:{x:{stacked:true,max:100,ticks:{callback:v=>v+'%'}},y:{stacked:true,grid:{display:false}}}},plugins:[pluginInline]});
+}
+
+/* ============================================================
+   SECCIÓN 2 — CASOS CRÍTICOS (sin cambios)
+   ============================================================ */
+function buildCriticos(){
+  return REGS.map(r=>{
+    const nC=Object.values(r.competencias).filter(v=>v==='C').length;
+    const areas=[...new Set(Object.entries(r.competencias).filter(([,v])=>v==='C').map(([k])=>{const cat=CAT.find(c=>c.CODIGO===k);return cat?cat.AREA:k;}))];
+    return{...r,nC,areas};
+  }).filter(r=>r.nC>=10).sort((a,b)=>b.nC-a.nC);
+}
+
+function r2(){
+  const criticos=buildCriticos();
+  const secMap={};
+  criticos.forEach(r=>{secMap[r.SECCION]=(secMap[r.SECCION]||0)+1;});
+  const topSec=Object.entries(secMap).sort((a,b)=>b[1]-a[1])[0]||['—',0];
+  document.getElementById('strip2').innerHTML=`<div class="s-box"><div class="s-val" style="color:var(--c)">${criticos.length}</div><div class="s-lbl">Estudiantes en riesgo</div></div><div class="s-box ora"><div class="s-val" style="color:var(--b)">${pct(criticos.length,REGS.length)}%</div><div class="s-lbl">Del total institucional (${REGS.length} est.)</div></div><div class="s-box blu"><div class="s-val" style="color:var(--navy)">${topSec[0]}</div><div class="s-lbl">Sección con más casos (${topSec[1]} estudiantes)</div></div>`;
+  DAT2=criticos; PG2=1; rTb2();
+}
+
+function flt2(){ const q=document.getElementById('q2').value.toLowerCase(); DAT2=buildCriticos().filter(r=>r.APELLIDOS_NOMBRES.toLowerCase().includes(q)); PG2=1; rTb2(); }
+
+function rTb2(){
+  const ini=(PG2-1)*PPG, pag=DAT2.slice(ini,ini+PPG);
+  document.getElementById('tb2').innerHTML=pag.map((r,i)=>`<tr class="${r.nC>=15?'rc':'rw'}"><td>${ini+i+1}</td><td><strong>${r.APELLIDOS_NOMBRES}</strong></td><td>${r.SECCION}</td><td>${r.GRADO}°</td><td>${r.CICLO}</td><td><strong style="color:var(--c)">${r.nC}</strong></td><td style="font-size:11px;max-width:250px">${r.areas.join(' · ')}</td><td>${r.asistencia.FALT}</td><td>${r.asistencia.TAR}</td></tr>`).join('');
+  const tot=Math.ceil(DAT2.length/PPG), el=document.getElementById('pag2');
+  el.innerHTML=''; if(tot<=1)return;
+  const btn=(t,pg,act)=>{const b=document.createElement('button');b.className='pb'+(act?' act':'');b.textContent=t;b.onclick=()=>{PG2=pg;rTb2();};el.appendChild(b);};
+  if(PG2>1)btn('←',PG2-1,false);
+  for(let i=1;i<=tot;i++){ if(i===1||i===tot||Math.abs(i-PG2)<=2)btn(i,i,i===PG2); else if(Math.abs(i-PG2)===3){const sp=document.createElement('span');sp.textContent='…';sp.style.padding='4px';el.appendChild(sp);} }
+  if(PG2<tot)btn('→',PG2+1,false);
+}
+
+/* ============================================================
+   SECCIÓN 3 — ÁREAS VISTA GENERAL (sin cambios)
+   ============================================================ */
+function r3(){ const regs=fRegs('f3',true); rAreas(regs); rTop5(regs); rHeatmap(regs); }
+
+function rAreas(regs){
+  dCh('areas');
+  const aMap={};
+  CAT.forEach(c=>{if(!aMap[c.AREA])aMap[c.AREA]={ad:0,a:0,b:0,c:0,t:0};});
+  regs.forEach(r=>Object.entries(r.competencias).forEach(([k,val])=>{const cat=CAT.find(c=>c.CODIGO===k);if(!cat||!aMap[cat.AREA])return;const ar=aMap[cat.AREA];if(val==='AD')ar.ad++;else if(val==='A')ar.a++;else if(val==='B')ar.b++;else if(val==='C')ar.c++;ar.t++;}));
+  let arr=Object.entries(aMap).map(([n,d])=>({n,pC:pct(d.c,d.t)})).sort((a,b)=>b.pC-a.pC);
+  const cols=arr.map(d=>{const r2=d.pC/100;return `rgb(${Math.round(46+137*r2)},${Math.round(125-97*r2)},${Math.round(50-22*r2)})`;});
+  const pluginLabel={id:'aLabel',afterDatasetsDraw(ch){const ctx2=ch.ctx;ch.data.datasets[0].data.forEach((val,i)=>{const bar=ch.getDatasetMeta(0).data[i];const{x,y}=bar.getProps(['x','y'],true);ctx2.save();ctx2.fillStyle='#333';ctx2.font='bold 11px Inter';ctx2.textAlign='left';ctx2.textBaseline='middle';ctx2.fillText(val+'%',x+6,y);ctx2.restore();});}};
+  CH['areas']=new Chart(document.getElementById('ch-areas'),{type:'bar',data:{labels:arr.map(d=>d.n),datasets:[{label:'% En Inicio (C)',data:arr.map(d=>d.pC),backgroundColor:cols}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:cx=>` ${cx.raw}% en nivel C`}}},scales:{x:{max:100,ticks:{callback:v=>v+'%'}},y:{grid:{display:false}}}},plugins:[pluginLabel]});
+}
+
+function rTop5(regs){
+  const stats=CAT.map(cat=>{let ad=0,a=0,b=0,cc=0;regs.forEach(r=>{const val=r.competencias[cat.CODIGO];if(val==='AD')ad++;else if(val==='A')a++;else if(val==='B')b++;else if(val==='C')cc++;});const t=ad+a+b+cc;return{...cat,pAD:pct(ad,t),pA:pct(a,t),pB:pct(b,t),pC:pct(cc,t)};}).sort((a,b)=>b.pC-a.pC).slice(0,5);
+  document.getElementById('top5').innerHTML=stats.map((c,i)=>`<div class="c5"><div class="c5-rk">🔴 #${i+1} — ${c.CODIGO}</div><div class="c5-ar">${c.AREA}</div><div class="c5-nm">${c.COMPETENCIA}</div><div class="pbars"><div class="pbr"><span class="pbl" style="color:var(--c)">C</span><div class="pbtr"><div class="pbfi" style="width:${c.pC}%;background:var(--c)"></div></div><span class="pbp" style="color:var(--c)">${c.pC}%</span></div><div class="pbr"><span class="pbl" style="color:var(--b)">B</span><div class="pbtr"><div class="pbfi" style="width:${c.pB}%;background:var(--b)"></div></div><span class="pbp" style="color:var(--b)">${c.pB}%</span></div><div class="pbr"><span class="pbl" style="color:var(--a)">A</span><div class="pbtr"><div class="pbfi" style="width:${c.pA}%;background:var(--a)"></div></div><span class="pbp" style="color:var(--a)">${c.pA}%</span></div><div class="pbr"><span class="pbl" style="color:var(--ad)">AD</span><div class="pbtr"><div class="pbfi" style="width:${c.pAD}%;background:var(--ad)"></div></div><span class="pbp" style="color:var(--ad)">${c.pAD}%</span></div></div></div>`).join('');
+}
+
+function rHeatmap(regs){
+  const secs=[...new Set(regs.map(r=>r.SECCION))].sort();
+  const rows=CAT.map(cat=>{const row={cod:cat.CODIGO,comp:cat.COMPETENCIA};let totC=0,totAll=0;secs.forEach(s=>{const sub=regs.filter(r=>r.SECCION===s);let c=0,t=0;sub.forEach(r=>{const val=r.competencias[cat.CODIGO];if(val)t++;if(val==='C')c++;});row[s]=t?Math.round(c/t*100):0;totC+=c;totAll+=t;});row._tot=totAll?Math.round(totC/totAll*100):0;return row;});
+  rows.sort((a,b)=>HM_ASC?a._tot-b._tot:b._tot-a._tot);
+  document.getElementById('hm-h').innerHTML=`<tr><th class="hml">Competencia</th>${secs.map(s=>`<th>${s}</th>`).join('')}<th class="srt" onclick="togHM()">% C Total ${HM_ASC?'↑':'↓'}</th></tr>`;
+  document.getElementById('hm-b').innerHTML=rows.map(row=>`<tr><td class="hml"><strong>${row.cod}</strong> ${row.comp}</td>${secs.map(s=>`<td style="${hmCol(row[s])}">${row[s]>0?row[s]+'%':''}</td>`).join('')}<td style="${hmCol(row._tot)};font-weight:800">${row._tot>0?row._tot+'%':''}</td></tr>`).join('');
+}
+function togHM(){ HM_ASC=!HM_ASC; r3(); }
+
+/* ============================================================
+   SECCIÓN 4 — ASISTENCIA Y PUNTUALIDAD (MOD 1 + MOD 2)
+   ============================================================ */
+function r4(){
+  const regs=fRegs('f4',true); /* MOD 2: ahora hasSec=true */
+  rKpi4(regs); rFalt(regs); rTar(regs); rDual(regs); rTb4(regs);
+}
+
+/* MOD 1: 6 KPIs con fórmula Días Laborados = ASIS+FALT+TAR+JUST */
+function rKpi4(regs){
+  let asis=0,falt=0,tar=0,just=0;
+  regs.forEach(r=>{
+    asis+=parseInt(r.asistencia.ASIS)||0;
+    falt+=parseInt(r.asistencia.FALT)||0;
+    tar +=parseInt(r.asistencia.TAR) ||0;
+    just+=parseInt(r.asistencia.JUST)||0;
+  });
+  const dl=asis+falt+tar+just; /* Días Laborados totales */
+  const p1=dl?((asis/dl)*100).toFixed(1):'0.0';
+  const p2=dl?((falt/dl)*100).toFixed(1):'0.0';
+  const p3=dl?((tar /dl)*100).toFixed(1):'0.0';
+  const p4=dl?((just/dl)*100).toFixed(1):'0.0';
+  const p5=dl?(((falt+tar)/dl)*100).toFixed(1):'0.0';
+
+  document.getElementById('kpi4').innerHTML=`
+    <div class="kpi">
+      <div class="kpi-lbl">Días Laborados Bimestre</div>
+      <div class="kpi-val" style="color:var(--navy)">${dl.toLocaleString()}</div>
+      <div class="kpi-det">Total de días·alumno en el período</div>
+    </div>
+    <div class="kpi kad">
+      <div class="kpi-lbl">Asistencia Efectiva</div>
+      <div class="kpi-val" style="color:var(--ad);font-size:20px">${asis.toLocaleString()} días</div>
+      <div class="kpi-det">${p1}% de días laborados</div>
+    </div>
+    <div class="kpi kc">
+      <div class="kpi-lbl">Faltas (FALT)</div>
+      <div class="kpi-val" style="color:var(--c);font-size:20px">${falt.toLocaleString()} días</div>
+      <div class="kpi-det">${p2}% de días laborados</div>
+    </div>
+    <div class="kpi kb">
+      <div class="kpi-lbl">Tardanzas (TAR)</div>
+      <div class="kpi-val" style="color:var(--b);font-size:20px">${tar.toLocaleString()} días</div>
+      <div class="kpi-det">${p3}% de días laborados</div>
+    </div>
+    <div class="kpi kbl">
+      <div class="kpi-lbl">Justificadas (JUST)</div>
+      <div class="kpi-val" style="color:#1565c0;font-size:20px">${just.toLocaleString()} días</div>
+      <div class="kpi-det">${p4}% de días laborados</div>
+    </div>
+    <div class="kpi kdb">
+      <div class="kpi-lbl">Inasistencia Total (F+T)</div>
+      <div class="kpi-val" style="color:#b71c1c;font-size:20px">${(falt+tar).toLocaleString()} días</div>
+      <div class="kpi-det">${p5}% — Faltas + Tardanzas / días lab.</div>
+    </div>`;
+
+  /* Barra de progreso proporcional */
+  const segs=[
+    {p:parseFloat(p1),col:'#2e7d32',lbl:'Asistió (ASIS)'},
+    {p:parseFloat(p2),col:'#ef5350',lbl:'Faltó (FALT)'},
+    {p:parseFloat(p3),col:'#ffa726',lbl:'Tardó (TAR)'},
+    {p:parseFloat(p4),col:'#1565c0',lbl:'Justificó (JUST)'},
+  ];
+  document.getElementById('barra4').innerHTML=`
+    <span class="card-t">Distribución de Días Laborados</span>
+    <div class="bprog">
+      ${segs.map(s=>`<div class="bpseg" style="width:${s.p}%;background:${s.col}">${s.p>=6?s.p+'%':''}</div>`).join('')}
+    </div>
+    <div class="bpleg">
+      ${segs.map(s=>`<div class="bpl"><div class="bpdot" style="background:${s.col}"></div>${s.lbl}: <strong>${s.p}%</strong></div>`).join('')}
+    </div>`;
+}
+
+function rFalt(regs){
+  dCh('falt');
+  const secs=[...new Set(regs.map(r=>r.SECCION))].sort();
+  const fD=[],jD=[];
+  secs.forEach(s=>{const sub=regs.filter(r=>r.SECCION===s);fD.push(sub.reduce((ac,r)=>ac+(parseInt(r.asistencia.FALT)||0),0));jD.push(sub.reduce((ac,r)=>ac+(parseInt(r.asistencia.JUST)||0),0));});
+  const prom=secs.length?fD.reduce((a,v)=>a+v,0)/secs.length:0;
+  CH['falt']=new Chart(document.getElementById('ch-falt'),{type:'bar',data:{labels:secs,datasets:[{label:'Faltas (FALT)',data:fD,backgroundColor:'#ef5350'},{label:'Justificadas (JUST)',data:jD,backgroundColor:'#ffa726'},{label:`Promedio faltas (${prom.toFixed(1)})`,data:secs.map(()=>prom),type:'line',borderColor:'#1a3a5c',borderWidth:2,borderDash:[6,4],pointRadius:0,fill:false,tension:0,yAxisID:'y'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:11}}}},scales:{x:{grid:{display:false}},y:{beginAtZero:true}}}});
+}
+
+function rTar(regs){
+  dCh('tar');
+  const secs=[...new Set(regs.map(r=>r.SECCION))];
+  let sd=secs.map(s=>({s,v:regs.filter(r=>r.SECCION===s).reduce((ac,r)=>ac+(parseInt(r.asistencia.TAR)||0),0)}));
+  sd.sort((a,b)=>b.v-a.v);
+  const prom=sd.length?sd.reduce((ac,d)=>ac+d.v,0)/sd.length:0;
+  const pluginTarLabel={id:'tarLbl',afterDatasetsDraw(ch){const ctx2=ch.ctx;ch.data.datasets[0].data.forEach((val,i)=>{const bar=ch.getDatasetMeta(0).data[i];const{x,y}=bar.getProps(['x','y'],true);ctx2.save();ctx2.fillStyle='#555';ctx2.font='bold 11px Inter';ctx2.textAlign='left';ctx2.textBaseline='middle';ctx2.fillText(val,x+6,y);ctx2.restore();});}};
+  CH['tar']=new Chart(document.getElementById('ch-tar'),{type:'bar',data:{labels:sd.map(d=>d.s),datasets:[{label:'Tardanzas',data:sd.map(d=>d.v),backgroundColor:sd.map(d=>d.v>prom*2?'#ef5350':'#ff9800')}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:cx=>` ${cx.raw} tardanzas`}}},scales:{x:{beginAtZero:true},y:{grid:{display:false}}}},plugins:[pluginTarLabel]});
+}
+
+function rDual(regs){
+  dCh('dual');
+  const secs=[...new Set(regs.map(r=>r.SECCION))].sort();
+  const tasaD=[],tarPD=[];
+  secs.forEach(s=>{const sub=regs.filter(r=>r.SECCION===s);const as=sub.reduce((ac,r)=>ac+(parseInt(r.asistencia.ASIS)||0),0);const fa=sub.reduce((ac,r)=>ac+(parseInt(r.asistencia.FALT)||0),0);const ta=sub.reduce((ac,r)=>ac+(parseInt(r.asistencia.TAR)||0),0);const tot=as+fa;tasaD.push(tot?parseFloat(((as/tot)*100).toFixed(1)):0);tarPD.push(sub.length?parseFloat((ta/sub.length).toFixed(1)):0);});
+  CH['dual']=new Chart(document.getElementById('ch-dual'),{type:'bar',data:{labels:secs,datasets:[{label:'Tardanzas prom./est.',data:tarPD,backgroundColor:'rgba(255,152,0,0.75)',yAxisID:'y1'},{label:'Tasa asistencia %',data:tasaD,type:'line',borderColor:'#1a3a5c',backgroundColor:'rgba(26,58,92,0.08)',borderWidth:2,pointBackgroundColor:'#1a3a5c',fill:true,tension:.3,yAxisID:'y'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:11}}}},scales:{y:{position:'left',min:0,max:100,ticks:{callback:v=>v+'%'},title:{display:true,text:'Tasa asistencia %',font:{size:11}}},y1:{position:'right',beginAtZero:true,grid:{drawOnChartArea:false},title:{display:true,text:'Tardanzas promedio',font:{size:11}}},x:{grid:{display:false}}}}});
+}
+
+function rTb4(regs){
+  DAT4=regs.filter(r=>{const ta=parseInt(r.asistencia.TAR)||0,fa=parseInt(r.asistencia.FALT)||0,ju=parseInt(r.asistencia.JUST)||0;return ta>5||(fa-ju)>3;}).sort((a,b)=>(parseInt(b.asistencia.TAR)||0)-(parseInt(a.asistencia.TAR)||0));
+  rFilas4(DAT4);
+}
+function flt4(){ const q=document.getElementById('q4').value.toLowerCase(); rFilas4(DAT4.filter(r=>r.APELLIDOS_NOMBRES.toLowerCase().includes(q))); }
+function rFilas4(data){ document.getElementById('tb4').innerHTML=data.map(r=>`<tr><td><strong>${r.APELLIDOS_NOMBRES}</strong></td><td>${r.SECCION}</td><td>${r.GRADO}°</td><td style="color:var(--c);font-weight:700">${r.asistencia.FALT}</td><td style="color:var(--b);font-weight:700">${r.asistencia.TAR}</td><td>${r.asistencia.JUST}</td></tr>`).join('')||'<tr><td colspan="6" style="text-align:center;color:var(--txt2);padding:20px">No hay estudiantes con puntualidad crítica en este filtro.</td></tr>'; }
+
+/* ============================================================
+   SECCIÓN 5 — ANÁLISIS DETALLADO POR ÁREA (NUEVA)
+   ============================================================ */
+function r5(){
+  const regs=fRegs('f5',true);
+  const area=v('f5a');
+  if(area){
+    document.getElementById('s5-all').style.display='none';
+    document.getElementById('s5-single').style.display='block';
+    rArea5Single(regs,area);
+  } else {
+    document.getElementById('s5-single').style.display='none';
+    document.getElementById('s5-all').style.display='block';
+    rAllAreas5(regs);
+  }
+}
+
+/* 5A + 5B: Gráfico y tabla cuando se selecciona un área */
+function rArea5Single(regs, area){
+  const comps=CAT.filter(c=>c.AREA===area);
+  document.getElementById('s5-title').textContent=`Resultados de ${area}`;
+
+  /* Calcular stats por competencia */
+  let stats=comps.map(cat=>{
+    let ad=0,a=0,b=0,cc=0;
+    regs.forEach(r=>{const val=r.competencias[cat.CODIGO];if(val==='AD')ad++;else if(val==='A')a++;else if(val==='B')b++;else if(val==='C')cc++;});
+    const t=ad+a+b+cc;
+    return{cod:cat.CODIGO,comp:cat.COMPETENCIA,pAD:pct(ad,t),pA:pct(a,t),pB:pct(b,t),pC:pct(cc,t),t};
+  });
+
+  /* Ordenar según S5_SORT */
+  stats.sort((a,b)=>S5_SORT.asc?a[S5_SORT.col]-b[S5_SORT.col]:b[S5_SORT.col]-a[S5_SORT.col]);
+
+  /* 5A: Gráfico de barras agrupadas */
+  dCh('area5');
+  CH['area5']=new Chart(document.getElementById('ch-area5'),{
+    type:'bar',
+    data:{labels:stats.map(s=>s.cod),datasets:[
+      {label:'AD',data:stats.map(s=>s.pAD),backgroundColor:'#2e7d32'},
+      {label:'A', data:stats.map(s=>s.pA), backgroundColor:'#66bb6a'},
+      {label:'B', data:stats.map(s=>s.pB), backgroundColor:'#ffa726'},
+      {label:'C', data:stats.map(s=>s.pC), backgroundColor:'#ef5350'},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom',labels:{font:{size:11}}},
+        tooltip:{callbacks:{title:items=>stats[items[0].dataIndex].comp,label:cx=>` ${cx.dataset.label}: ${cx.raw}%`}}},
+      scales:{x:{grid:{display:false}},y:{max:100,ticks:{callback:v=>v+'%'}}}}
+  });
+
+  /* 5B: Tabla con colores en columna C% */
+  const cCol=p=>p>30?'background:#ffebee;color:#c62828':p>=15?'background:#fff8e1;color:#e65100':'background:#e8f5e9;color:#2e7d32';
+  document.getElementById('tb5b').innerHTML=stats.map(s=>`
+    <tr>
+      <td><strong>${s.cod}</strong> ${s.comp}</td>
+      <td style="text-align:center;font-weight:700;color:var(--ad)">${s.pAD}%</td>
+      <td style="text-align:center;font-weight:700;color:var(--a)">${s.pA}%</td>
+      <td style="text-align:center;font-weight:700;color:var(--b)">${s.pB}%</td>
+      <td style="text-align:center;font-weight:700;${cCol(s.pC)};padding:8px 12px;border-radius:4px">${s.pC}%</td>
+      <td style="text-align:center;color:var(--txt2)">${s.t}</td>
+    </tr>`).join('');
+
+  /* Actualizar indicadores de orden en cabeceras */
+  document.querySelectorAll('#s5-single .sortTh').forEach(th=>{
+    const col=th.dataset.col, lbl=th.dataset.lbl;
+    th.textContent=lbl+(S5_SORT.col===col?(S5_SORT.asc?' ↑':' ↓'):'');
+  });
+}
+
+function sort5Tab(col){
+  if(S5_SORT.col===col) S5_SORT.asc=!S5_SORT.asc;
+  else { S5_SORT.col=col; S5_SORT.asc=false; }
+  r5();
+}
+
+/* 5C: 11 donuts cuando se selecciona "Todas las áreas" */
+function rAllAreas5(regs){
+  /* Destruir donuts previos */
+  for(let i=0;i<11;i++) dCh('donut_'+i);
+
+  const areas=[...new Set(CAT.map(c=>c.AREA))];
+  const aStats=areas.map(area=>{
+    const m={ad:0,a:0,b:0,c:0,t:0};
+    regs.forEach(r=>Object.entries(r.competencias).forEach(([k,val])=>{
+      const cat=CAT.find(c=>c.CODIGO===k); if(!cat||cat.AREA!==area) return;
+      if(val==='AD')m.ad++;else if(val==='A')m.a++;else if(val==='B')m.b++;else if(val==='C')m.c++;m.t++;
+    }));
+    return{area,pAD:pct(m.ad,m.t),pA:pct(m.a,m.t),pB:pct(m.b,m.t),pC:pct(m.c,m.t)};
+  }).sort((a,b)=>b.pC-a.pC);
+
+  /* Crear divs para los donuts */
+  document.getElementById('donuts-g').innerHTML=aStats.map((_,i)=>
+    `<div class="donut-c"><h4>${aStats[i].area}</h4><div style="position:relative;height:150px"><canvas id="dc-${i}"></canvas></div></div>`
+  ).join('');
+
+  /* Dibujar cada donut después del repintado del DOM */
+  requestAnimationFrame(()=>{
+    aStats.forEach((d,i)=>{
+      const plugin={id:'ctr'+i,afterDraw(ch){const{ctx,width,height}=ch;ctx.save();ctx.fillStyle=d.pC>30?'#ef5350':d.pC>15?'#ff9800':'#2e7d32';ctx.font='bold 15px Inter';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(d.pC+'% C',width/2,height/2);ctx.restore();}};
+      CH['donut_'+i]=new Chart(document.getElementById('dc-'+i),{
+        type:'doughnut',
+        data:{labels:['AD','A','B','C'],datasets:[{data:[d.pAD,d.pA,d.pB,d.pC],backgroundColor:['#2e7d32','#66bb6a','#ffa726','#ef5350'],borderWidth:2}]},
+        options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:cx=>` ${cx.label}: ${cx.raw}%`}}}},
+        plugins:[plugin]
+      });
+    });
+  });
+}
+
+/* ============================================================
+   SECCIÓN 6 — PROYECCIÓN BIMESTRAL (NUEVA)
+   ============================================================ */
+
+/* Regresión lineal por mínimos cuadrados (n=1 → pendiente=0) */
+function linreg(pts){
+  const n=pts.length;
+  if(!n) return{m:0,b:0};
+  if(n===1) return{m:0,b:pts[0].y};
+  const sx=pts.reduce((a,p)=>a+p.x,0),sy=pts.reduce((a,p)=>a+p.y,0);
+  const sxy=pts.reduce((a,p)=>a+p.x*p.y,0),sx2=pts.reduce((a,p)=>a+p.x*p.x,0);
+  const d=n*sx2-sx*sx; if(!d) return{m:0,b:sy/n};
+  const m=(n*sxy-sx*sy)/d;
+  return{m,b:(sy-m*sx)/n};
+}
+
+/* Construir array de 4 puntos (real + proyectados) para una métrica */
+function buildProjArr(bd, metric){
+  const allBims=[1,2,3,4];
+  const realBims=Object.keys(bd).map(Number).sort();
+  const pts=realBims.map(b=>({x:b,y:bd[String(b)][metric]||0}));
+  const reg=linreg(pts);
+  return allBims.map(b=>{
+    if(bd[String(b)]!==undefined) return{real:true,val:bd[String(b)][metric]};
+    const pv=Math.max(0,Math.min(100,reg.m*b+reg.b));
+    return{real:false,val:parseFloat(pv.toFixed(1))};
+  });
+}
+
+/* Crear par de datasets (real sólido + proyectado punteado) */
+function mkLineDs(arr, color, label){
+  const rD=arr.map(p=>p.real?p.val:null);
+  const pD=arr.map(()=>null);
+  let lri=-1; arr.forEach((p,i)=>{if(p.real)lri=i;});
+  if(lri>=0){
+    pD[lri]=rD[lri]; /* punto de conexión */
+    arr.forEach((p,i)=>{if(!p.real&&i>lri)pD[i]=p.val;});
+  }
+  return[
+    {label,data:rD,borderColor:color,backgroundColor:'transparent',borderWidth:2,pointRadius:5,pointBackgroundColor:color,tension:.3,spanGaps:false},
+    {label:`${label} ·proyec.`,data:pD,borderColor:color,backgroundColor:'transparent',borderWidth:1.5,borderDash:[6,3],pointRadius:5,pointStyle:'circle',pointBorderColor:color,pointBackgroundColor:'transparent',tension:.3,spanGaps:false}
+  ];
+}
+
+/* Calcular datos por bimestre para un conjunto de registros */
+function getBimData(regs){
+  const bims=[...new Set(regs.map(r=>r.BIMESTRE))].sort();
+  const res={};
+  bims.forEach(bim=>{
+    const sub=regs.filter(r=>r.BIMESTRE===bim);
+    const n=cNiv(sub);
+    let as=0,fa=0,ta=0,ju=0;
+    sub.forEach(r=>{as+=parseInt(r.asistencia.ASIS)||0;fa+=parseInt(r.asistencia.FALT)||0;ta+=parseInt(r.asistencia.TAR)||0;ju+=parseInt(r.asistencia.JUST)||0;});
+    const dl=as+fa+ta+ju;
+    res[bim]={pAD:pct(n.ad,n.t),pA:pct(n.a,n.t),pB:pct(n.b,n.t),pC:pct(n.c,n.t),
+              tasa:dl?parseFloat(((as/dl)*100).toFixed(1)):0,
+              pTar:dl?parseFloat(((ta/dl)*100).toFixed(1)):0,
+              pFalt:dl?parseFloat(((fa/dl)*100).toFixed(1)):0};
+  });
+  return res;
+}
+
+function r6(){ r6a(); r6b(); r6c(); r6d(); }
+
+/* 6A: Proyección de niveles de logro */
+function r6a(){
+  dCh('p6a');
+  const regs=fRegs('f6',true);
+  const bd=getBimData(regs);
+  const xlabs=['Bim. 1','Bim. 2','Bim. 3','Bim. 4'];
+  const mets=[{m:'pAD',lbl:'AD',col:'#2e7d32'},{m:'pA',lbl:'A',col:'#66bb6a'},{m:'pB',lbl:'B',col:'#ffa726'},{m:'pC',lbl:'C',col:'#ef5350'}];
+  const datasets=[];
+  mets.forEach(mt=>mkLineDs(buildProjArr(bd,mt.m),mt.col,mt.lbl).forEach(ds=>datasets.push(ds)));
+  CH['p6a']=new Chart(document.getElementById('ch-p6a'),{type:'line',data:{labels:xlabs,datasets},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:11},filter:l=>!l.text.includes('·proyec.')}}},scales:{x:{grid:{display:false}},y:{min:0,max:100,ticks:{callback:v=>v+'%'}}}}});
+}
+
+/* 6B: Comparación de áreas con checkboxes */
+function r6b(){
+  dCh('p6b');
+  const areas=[...new Set(CAT.map(c=>c.AREA))];
+  const COLS=['#e74c3c','#3498db','#2ecc71','#f39c12','#9b59b6','#1abc9c','#e67e22','#34495e','#e91e63','#00bcd4','#8bc34a'];
+
+  /* Poblar checkboxes la primera vez */
+  if(!document.getElementById('s6-cbs').children.length){
+    document.getElementById('s6-cbs').innerHTML=areas.map((a,i)=>
+      `<span class="area-cb-item" id="acb-${i}" onclick="togAreaSel(${i},'${a.replace(/'/g,"\\'")}')">${a}</span>`
+    ).join('');
+  }
+
+  if(!ARB_SEL.size){
+    document.getElementById('ch-p6b').style.display='none';
+    document.getElementById('p6b-msg').style.display='block';
+    return;
+  }
+  document.getElementById('ch-p6b').style.display='block';
+  document.getElementById('p6b-msg').style.display='none';
+
+  const selAreas=[...ARB_SEL];
+  const datasets=[];
+  selAreas.forEach((area,i)=>{
+    const bims=[...new Set(REGS.map(r=>r.BIMESTRE))].sort();
+    const bd={};
+    bims.forEach(bim=>{
+      const sub=REGS.filter(r=>r.BIMESTRE===bim);
+      const m={c:0,t:0};
+      sub.forEach(r=>Object.entries(r.competencias).forEach(([k,val])=>{const cat=CAT.find(c=>c.CODIGO===k);if(!cat||cat.AREA!==area)return;if(val==='C')m.c++;m.t++;}));
+      bd[bim]={pC:pct(m.c,m.t)};
+    });
+    const col=COLS[areas.indexOf(area)%COLS.length];
+    mkLineDs(buildProjArr(bd,'pC'),col,area).forEach(ds=>datasets.push(ds));
+  });
+  CH['p6b']=new Chart(document.getElementById('ch-p6b'),{type:'line',data:{labels:['Bim. 1','Bim. 2','Bim. 3','Bim. 4'],datasets},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:11},filter:l=>!l.text.includes('·proyec.')}}},scales:{x:{grid:{display:false}},y:{min:0,max:100,ticks:{callback:v=>v+'%'}}}}});
+}
+
+function togAreaSel(idx, area){
+  const el=document.getElementById('acb-'+idx);
+  if(ARB_SEL.has(area)){ARB_SEL.delete(area);el.classList.remove('checked');}
+  else if(ARB_SEL.size<4){ARB_SEL.add(area);el.classList.add('checked');}
+  else{alert('Máximo 4 áreas simultáneas. Deselecciona una antes de agregar otra.');return;}
+  r6b();
+}
+
+/* 6C: Proyección de asistencia y puntualidad */
+function r6c(){
+  dCh('p6c');
+  const sec=v('f6s');
+  const regs=sec?REGS.filter(r=>r.SECCION===sec):fRegs('f6',true);
+  const bd=getBimData(regs);
+  const mets=[{m:'tasa',lbl:'Tasa asistencia %',col:'#1a3a5c'},{m:'pTar',lbl:'% Tardanzas',col:'#ff9800'},{m:'pFalt',lbl:'% Faltas',col:'#ef5350'}];
+  const datasets=[];
+  mets.forEach(mt=>mkLineDs(buildProjArr(bd,mt.m),mt.col,mt.lbl).forEach(ds=>datasets.push(ds)));
+  CH['p6c']=new Chart(document.getElementById('ch-p6c'),{type:'line',data:{labels:['Bim. 1','Bim. 2','Bim. 3','Bim. 4'],datasets},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:11},filter:l=>!l.text.includes('·proyec.')}}},scales:{x:{grid:{display:false}},y:{min:0,max:100,ticks:{callback:v=>v+'%'}}}}});
+}
+
+/* 6D: Tabla resumen de proyecciones */
+function r6d(){
+  const regs=fRegs('f6',true);
+  const bd=getBimData(regs);
+  const rows=[1,2,3,4].map(b=>{
+    const k=String(b);
+    if(bd[k]) return{b,real:true,...bd[k]};
+    const proj={b,real:false};
+    ['pAD','pA','pB','pC','tasa','pTar'].forEach(m=>{proj[m]=buildProjArr(bd,m)[b-1].val;});
+    return proj;
+  });
+  const cl=r=>(r.real?'':'proj-cell');
+  document.getElementById('t6d').innerHTML=rows.map(r=>`
+    <tr class="${r.real?'':'proj-row'}">
+      <td>${r.real?`<strong>Bimestre ${r.b}</strong>`:`<em style="color:#888">Bimestre ${r.b} *</em>`}</td>
+      <td class="${cl(r)}" style="text-align:center;font-weight:700;color:var(--ad)">${r.pAD}%</td>
+      <td class="${cl(r)}" style="text-align:center;font-weight:700;color:var(--a)">${r.pA}%</td>
+      <td class="${cl(r)}" style="text-align:center;font-weight:700;color:var(--b)">${r.pB}%</td>
+      <td class="${cl(r)}" style="text-align:center;font-weight:700;color:var(--c)">${r.pC}%</td>
+      <td class="${cl(r)}" style="text-align:center">${r.tasa}%</td>
+      <td class="${cl(r)}" style="text-align:center">${r.pTar}%</td>
+    </tr>`).join('');
+}
+
+/* ============================================================
+   SECCIÓN 7 — FICHA DE ESTUDIANTE (NUEVA)
+   ============================================================ */
+
+/* 7A: Búsqueda en tiempo real */
+function buscarEst7(){
+  const q=document.getElementById('s7-inp').value.toLowerCase().trim();
+  const dd=document.getElementById('s7-dd');
+  if(!q){dd.classList.remove('open');return;}
+  const matches=[...new Map(
+    REGS.filter(r=>r.APELLIDOS_NOMBRES.toLowerCase().includes(q)).map(r=>[r.APELLIDOS_NOMBRES,r])
+  ).values()].slice(0,10);
+  dd.innerHTML=matches.length
+    ?matches.map(r=>`<div class="stu-di" onclick="selEst7('${r.APELLIDOS_NOMBRES.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')"><span>${r.APELLIDOS_NOMBRES}</span><span class="stu-sec">${r.SECCION} · ${r.GRADO}°</span></div>`).join('')
+    :'<div class="stu-di" style="color:var(--txt2);cursor:default">Sin resultados</div>';
+  dd.classList.add('open');
+}
+
+function selEst7(nombre){
+  S7_EST=nombre;
+  document.getElementById('s7-inp').value=nombre;
+  document.getElementById('s7-dd').classList.remove('open');
+  /* Poblar selector de bimestres disponibles */
+  const bims=[...new Set(REGS.filter(r=>r.APELLIDOS_NOMBRES===nombre).map(r=>r.BIMESTRE))].sort();
+  const sel=document.getElementById('s7-bim');
+  sel.innerHTML=bims.map(b=>`<option value="${b}">Bimestre ${b}</option>`).join('');
+  sel.style.display=bims.length>1?'inline-block':'none';
+  loadFicha7();
+}
+
+function loadFicha7(){
+  if(!S7_EST) return;
+  const bim=document.getElementById('s7-bim').value||'1';
+  const reg=REGS.find(r=>r.APELLIDOS_NOMBRES===S7_EST&&r.BIMESTRE===bim);
+  if(!reg) return;
+  renderFichaH7(reg);
+  renderRadar7(reg);
+  renderTablaComp7(reg);
+  renderAsist7(reg);
+  document.getElementById('s7-ficha').style.display='block';
+}
+
+/* 7B: Encabezado de la ficha */
+function renderFichaH7(reg){
+  const nAD=Object.values(reg.competencias).filter(v=>v==='AD').length;
+  const nA =Object.values(reg.competencias).filter(v=>v==='A').length;
+  const nB =Object.values(reg.competencias).filter(v=>v==='B').length;
+  const nC =Object.values(reg.competencias).filter(v=>v==='C').length;
+  document.getElementById('s7-header').innerHTML=`
+    <div class="ficha-h">
+      <div class="ficha-name">${reg.APELLIDOS_NOMBRES}</div>
+      <div class="ficha-meta">${reg.GRADO}° Grado &nbsp;·&nbsp; Sección ${reg.SECCION} &nbsp;·&nbsp; Ciclo ${reg.CICLO} &nbsp;·&nbsp; Bimestre ${reg.BIMESTRE}</div>
+      <div class="ficha-kpis">
+        <div class="fkpi"><div class="fkpi-val" style="color:#a5d6a7">${nAD}</div><div class="fkpi-lbl">AD</div></div>
+        <div class="fkpi"><div class="fkpi-val" style="color:#c8e6c9">${nA}</div><div class="fkpi-lbl">A</div></div>
+        <div class="fkpi"><div class="fkpi-val" style="color:#ffe082">${nB}</div><div class="fkpi-lbl">B</div></div>
+        <div class="fkpi"><div class="fkpi-val" style="color:#ef9a9a">${nC}</div><div class="fkpi-lbl">C</div></div>
+        <div class="fkpi"><div class="fkpi-val" style="color:#fff">${nAD+nA+nB+nC}</div><div class="fkpi-lbl">Total</div></div>
+      </div>
+    </div>`;
+}
+
+/* 7C: Radar de perfil por áreas (C=1, B=2, A=3, AD=4) */
+const NIVEL_NUM={'AD':4,'A':3,'B':2,'C':1};
+const AREAS_SHORT=['Matemát.','Comuni.','C.Tecnol.','CC.Soc.','DPCC','EPT','Ed.Física','Arte','Inglés','Ed.Relig.','Comp.TV.'];
+
+function renderRadar7(reg){
+  dCh('radar7');
+  const areas=[...new Set(CAT.map(c=>c.AREA))];
+  const vals=areas.map(area=>{
+    const comps=CAT.filter(c=>c.AREA===area);
+    const sum=comps.reduce((a,c)=>a+(NIVEL_NUM[reg.competencias[c.CODIGO]]||0),0);
+    return parseFloat((sum/comps.length).toFixed(2));
+  });
+  CH['radar7']=new Chart(document.getElementById('ch-radar7'),{
+    type:'radar',
+    data:{labels:AREAS_SHORT,datasets:[{label:reg.APELLIDOS_NOMBRES.split(',')[0],data:vals,backgroundColor:'rgba(26,58,92,0.15)',borderColor:'#1a3a5c',borderWidth:2,pointBackgroundColor:'#1a3a5c',pointRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{r:{min:0,max:4,ticks:{stepSize:1,callback:v=>(['','C','B','A','AD'][v]||''),font:{size:10}},grid:{color:'rgba(0,0,0,0.1)'},pointLabels:{font:{size:11,weight:'600'}}}}}
+  });
+}
+
+/* 7D: Tabla detallada de competencias agrupadas por área */
+function renderTablaComp7(reg){
+  const COL={'AD':'#2e7d32','A':'#66bb6a','B':'#ffa726','C':'#ef5350'};
+  let html='', curArea='';
+  CAT.forEach(cat=>{
+    if(cat.AREA!==curArea){
+      curArea=cat.AREA;
+      html+=`<tr class="area-sep"><td colspan="3">${curArea}</td></tr>`;
+    }
+    const niv=reg.competencias[cat.CODIGO]||'—';
+    html+=`<tr>
+      <td style="font-size:11px;color:var(--txt2);white-space:nowrap">${cat.AREA}</td>
+      <td style="font-size:12px">${cat.COMPETENCIA}</td>
+      <td style="text-align:center"><span class="nbad" style="background:${COL[niv]||'#999'}">${niv}</span></td>
+    </tr>`;
+  });
+  document.getElementById('tb7b').innerHTML=html;
+}
+
+/* 7E: Ficha de asistencia del estudiante */
+function renderAsist7(reg){
+  const as=parseInt(reg.asistencia.ASIS)||0, fa=parseInt(reg.asistencia.FALT)||0;
+  const ta=parseInt(reg.asistencia.TAR)||0,  ju=parseInt(reg.asistencia.JUST)||0;
+  const dl=as+fa+ta+ju;
+  const p1=dl?((as/dl)*100).toFixed(1):0, p2=dl?((fa/dl)*100).toFixed(1):0;
+  const p3=dl?((ta/dl)*100).toFixed(1):0, p4=dl?((ju/dl)*100).toFixed(1):0;
+
+  const alerta=(fa>5||ta>8)?`<div style="background:#ffebee;border:1.5px solid var(--c);border-radius:8px;padding:12px 16px;margin-bottom:14px;color:#c62828;font-weight:600;font-size:13px">
+    ⚠️${fa>5?` ${fa} faltas (supera el límite recomendado de 5).`:''}${ta>8?` ${ta} tardanzas (supera el límite recomendado de 8).`:''}</div>`:'';
+
+  document.getElementById('s7-asist').innerHTML=`
+    ${alerta}
+    <div class="bprog">
+      <div class="bpseg" style="width:${p1}%;background:#2e7d32">${parseFloat(p1)>=8?p1+'%':''}</div>
+      <div class="bpseg" style="width:${p2}%;background:#ef5350">${parseFloat(p2)>=8?p2+'%':''}</div>
+      <div class="bpseg" style="width:${p3}%;background:#ffa726">${parseFloat(p3)>=8?p3+'%':''}</div>
+      <div class="bpseg" style="width:${p4}%;background:#1565c0">${parseFloat(p4)>=8?p4+'%':''}</div>
+    </div>
+    <div class="bpleg" style="margin:10px 0 18px">
+      <div class="bpl"><div class="bpdot" style="background:#2e7d32"></div>Asistió: <strong>${p1}%</strong></div>
+      <div class="bpl"><div class="bpdot" style="background:#ef5350"></div>Faltó: <strong>${p2}%</strong></div>
+      <div class="bpl"><div class="bpdot" style="background:#ffa726"></div>Tardó: <strong>${p3}%</strong></div>
+      <div class="bpl"><div class="bpdot" style="background:#1565c0"></div>Justificó: <strong>${p4}%</strong></div>
+    </div>
+    <table class="dt" style="font-size:13px">
+      <thead><tr><th>Indicador</th><th style="text-align:center">Días</th><th style="text-align:center">% de días laborados</th></tr></thead>
+      <tbody>
+        <tr><td>Asistió (ASIS)</td><td style="text-align:center"><strong>${as}</strong></td><td style="text-align:center;color:var(--ad);font-weight:700">${p1}%</td></tr>
+        <tr><td>Faltó (FALT)</td><td style="text-align:center"><strong>${fa}</strong></td><td style="text-align:center;color:var(--c);font-weight:700">${p2}%</td></tr>
+        <tr><td>Tardó (TAR)</td><td style="text-align:center"><strong>${ta}</strong></td><td style="text-align:center;color:var(--b);font-weight:700">${p3}%</td></tr>
+        <tr><td>Justificó (JUST)</td><td style="text-align:center"><strong>${ju}</strong></td><td style="text-align:center;color:#1565c0;font-weight:700">${p4}%</td></tr>
+        <tr style="background:#f8f9ff"><td><strong>Total Días Laborados</strong></td><td style="text-align:center" colspan="2"><strong>${dl}</strong></td></tr>
+      </tbody>
+    </table>`;
+}
+
+/* Cerrar dropdown al hacer clic fuera */
+document.addEventListener('click', e => {
+  if (!e.target.closest('.stu-wrap')) document.getElementById('s7-dd')?.classList.remove('open');
+});
+</script>
+</body>
+</html>
